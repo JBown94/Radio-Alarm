@@ -50,26 +50,28 @@ void loop() {
 }
 
 void enableAlarm() {
-  tone(buzzer, 50);
+  //tone(buzzer, 50);
 }
-void disableAlarm(bool output) {
-  if (output) {
-    Serial.println("Status: Disarmed");
-  }
-  
+void disableAlarm(bool setDisable) {
   activated = false;
-  noTone(buzzer);
+  //noTone(buzzer);
+
+  if (setDisable) {
+    Serial.println("Status: Disarmed");
+    tone(buzzer, 700, 100);
+    tone(buzzer, 800, 100);
+    tone(buzzer, 900, 100);
+  }
 }
 
 void handleCodeEntry() {
   char enteredKey = customKeypad.getKey();
   bool hasDisarmed = false;
   
-  if (enteredKey){
-    Serial.println(enteredKey);
-    
+  if (enteredKey) {   
     currentCode[currentCodeIdx] = enteredKey;
     currentCodeIdx++;
+    tone(buzzer, 1000, 50);
   }
 
   if (currentCodeIdx > MAX_CODE_LENGTH-1) {
@@ -77,6 +79,9 @@ void handleCodeEntry() {
       disableAlarm(true);
     } else {
       Serial.println("Status: Disarm Unauthorised - Incorrect Code");
+      Serial.println(currentCode);
+      tone(buzzer, 500, 500);
+      tone(buzzer, 300, 200);
     }
   }
 }
