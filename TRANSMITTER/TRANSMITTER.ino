@@ -5,12 +5,16 @@ const byte ROWS = 4;
 const byte COLS = 4;
 
 const int MAX_CODE_LENGTH = 4;
+const int SECONDS_UNTIL_ALARM = 5;
 
 //--------------------------
 //Pin assignment
 const int button = 2;
 const int buzzer = 11;
 const int transmitter = 12;
+
+const int green_led = A1;
+const int red_led = A2;
 //--------------------------
 
 enum StatusCodes {
@@ -38,17 +42,25 @@ bool activated = false;
 char currentCode[MAX_CODE_LENGTH] = {};
 int currentCodeIdx = 0;
 
+unsigned long delayStart = 0;
+bool delayRunning = false;
+//-------------------------------------------------------------------------------------------------------------------------
+
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(green_led, OUTPUT);
+  pinMode(red_led, OUTPUT);
   pinMode(button, INPUT);
 
   digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(green_led, HIGH);
+  digitalWrite(red_led, LOW);
 
   vw_set_tx_pin(transmitter);
   vw_setup(2000);
 
   sendStatusCode(Armed);
-  
+
   Serial.begin(9600);
   Serial.println("Status: Armed");
 }
@@ -56,13 +68,13 @@ void setup() {
 void loop() {
   if (digitalRead(button) == HIGH) {
     if (activated != true) {
-      Serial.println("Status: Triggered");
+      setInitialTrigger();
     }
     
     activated = true;
   }
 
-  sendStatusCode(Armed);
+  sendStatusCode(Armed); //TODO: Does this need to be constantly broadcasting, or just send once for each status change?
 
   if (activated) {
     handleCodeEntry();
@@ -72,21 +84,38 @@ void loop() {
   }
 }
 
+void setInitialTrigger() {
+  Serial.println("Status: Triggered");
+  tone(buzzer, 950, 100);
+  
+  delayStart = millis();
+  delayRunning = true;
+}
 void enableAlarm() {
-  sendStatusCode(Triggered);
+  digitalWrite(green_led, LOW);
+  digitalWrite(red_led, HIGH);
+  
+  if (delayRunning && ((millis() - delayStart) >= (SECONDS_UNTIL_ALARM * 1000))) {
+    sendStatusCode(Triggered);
+    
+    tone(buzzer, 650, 100);
+    tone(buzzer, 950, 100);
+  }
 }
 void disableAlarm(bool setDisable) {
-  //TODO: Send a radio signal to the other board that the alarm has been disarmed
-  activated = false;
-  //noTone(buzzer);
+  sendStatusCode(Disarmed);
+  
+  digitalWrite(green_led, HIGH);
+  digitalWrite(red_led, LOW);
 
   if (setDisable) {
     Serial.println("Status: Disarmed");
-    sendStatusCode(Disarmed);
     tone(buzzer, 700, 100);
     tone(buzzer, 800, 100);
     tone(buzzer, 900, 100);
   }
+
+  activated = false;
 }
 
 void handleCodeEntry() {
@@ -96,6 +125,7 @@ void handleCodeEntry() {
   if (enteredKey) {   
     currentCode[currentCodeIdx] = enteredKey;
     currentCodeIdx++;
+    
     tone(buzzer, 1000, 50);
   }
 
