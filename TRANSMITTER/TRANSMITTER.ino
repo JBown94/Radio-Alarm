@@ -62,6 +62,8 @@ void loop() {
     activated = true;
   }
 
+  sendStatusCode(Armed);
+
   if (activated) {
     handleCodeEntry();
     enableAlarm();
