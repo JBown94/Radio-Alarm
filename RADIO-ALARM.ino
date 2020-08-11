@@ -1,11 +1,24 @@
 #include <Keypad.h>
+#include <VirtualWire.h>
 
 const byte ROWS = 4;
 const byte COLS = 4;
 
 const int MAX_CODE_LENGTH = 4;
+
+//--------------------------
+//Pin assignment
 const int button = 2;
 const int buzzer = 11;
+const int transmitter = 12;
+//--------------------------
+
+enum StatusCodes {
+  Armed = 100,
+  Disarmed = 200,
+  Triggered = 300
+  //Deactivated = 400
+};
 
 char hexaKeys[ROWS][COLS] = {
   {'1', '2', '3', 'A'},
@@ -30,6 +43,11 @@ void setup() {
   pinMode(button, INPUT);
 
   digitalWrite(LED_BUILTIN, LOW);
+
+  vw_set_tx_pin(transmitter);
+  vw_setup(2000);
+
+  sendStatusCode(Armed);
   
   Serial.begin(9600);
   Serial.println("Status: Armed");
@@ -37,7 +55,10 @@ void setup() {
 
 void loop() {
   if (digitalRead(button) == HIGH) {
-    Serial.println("Status: Triggered");
+    if (activated != true) {
+      Serial.println("Status: Triggered");
+    }
+    
     activated = true;
   }
 
@@ -50,14 +71,16 @@ void loop() {
 }
 
 void enableAlarm() {
-  //tone(buzzer, 50);
+  sendStatusCode(Triggered);
 }
 void disableAlarm(bool setDisable) {
+  //TODO: Send a radio signal to the other board that the alarm has been disarmed
   activated = false;
   //noTone(buzzer);
 
   if (setDisable) {
     Serial.println("Status: Disarmed");
+    sendStatusCode(Disarmed);
     tone(buzzer, 700, 100);
     tone(buzzer, 800, 100);
     tone(buzzer, 900, 100);
@@ -78,8 +101,7 @@ void handleCodeEntry() {
     if (checkDisarmed()) {
       disableAlarm(true);
     } else {
-      Serial.println("Status: Disarm Unauthorised - Incorrect Code");
-      Serial.println(currentCode);
+      Serial.println("Status: Unauthorised - Incorrect Code");
       tone(buzzer, 500, 500);
       tone(buzzer, 300, 200);
     }
@@ -99,4 +121,9 @@ bool checkDisarmed() {
   currentCodeIdx = 0;
 
   return hasDisarmed;
+}
+
+void sendStatusCode(StatusCodes code) {
+  vw_send((uint8_t *)code, 3);
+  vw_wait_tx();
 }
