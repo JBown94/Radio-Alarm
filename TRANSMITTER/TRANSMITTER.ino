@@ -6,14 +6,11 @@ const byte ROWS = 4;
 const byte COLS = 4;
 
 const int MAX_CODE_LENGTH = 4;
-const int SECONDS_UNTIL_ALARM = 5;
 
 //--------------------------
 //Pin assignment
 const int button = 2;
 const int buzzer = 11;
-const int transmitter = 12;
-
 const int green_led = A1;
 const int red_led = A2;
 //--------------------------
@@ -43,9 +40,6 @@ bool activated = false;
 
 char currentCode[MAX_CODE_LENGTH] = {};
 int currentCodeIdx = 0;
-
-unsigned long delayStart = 0;
-bool delayRunning = false;
 //-------------------------------------------------------------------------------------------------------------------------
 
 void setup() {
@@ -97,20 +91,12 @@ void loop() {
 void setInitialTrigger() {
   Serial.println("Status: Triggered");
   tone(buzzer, 950, 100);
-  
-  delayStart = millis();
-  delayRunning = true;
 }
 void enableAlarm() {
   digitalWrite(green_led, LOW);
   digitalWrite(red_led, HIGH);
 
   sendStatusCode(Triggered);
-  
-  if (delayRunning && ((millis() - delayStart) >= (SECONDS_UNTIL_ALARM * 1000))) {
-    tone(buzzer, 650, 100);
-    tone(buzzer, 750, 100);
-  }
 }
 void disableAlarm(bool setDisable) {
   digitalWrite(green_led, HIGH);
@@ -165,9 +151,9 @@ bool checkDisarmed() {
 }
 
 void sendStatusCode(StatusCodes code) {
-  //const char *msg = "420";
   char *msg = "";
 
+  //TODO: See if able to convert the values directly
   switch (code) {
     case Armed: msg = "100"; break;
     case Disarmed: msg = "200"; break;
@@ -176,7 +162,6 @@ void sendStatusCode(StatusCodes code) {
     default: msg = "000";
   }
 
-  //driver.send(code, 3);
   driver.send((uint8_t *)msg, strlen(msg));
   driver.waitPacketSent();
 }
